@@ -8,7 +8,7 @@ el('creditForm').onsubmit=async e=>{
  if(!c||note.length<3||reference.length<5||!Number.isInteger(amount)||amount<1||amount>1000){msg('Completa correctamente los datos de la venta.','warning');return}
  let expiresAt=null;
  if(expiry){expiresAt=new Date(expiry+'T23:59:59-05:00').toISOString();if(Date.parse(expiresAt)<=Date.now()){msg('La fecha de vencimiento debe ser futura.','warning');return}}
- if(!confirm('¿Confirmas que recibiste el pago '+reference+' y acreditas '+amount+' aplicaciones a '+c.email+(expiry?' con vencimiento '+expiry:' sin vencimiento')+'?'))return;
+ if(!confirm('ACREDITACIÓN MANUAL\nCliente: '+c.email+'\nCréditos: '+amount+'\nMotivo/referencia: '+note+'\nID de operación: '+reference+'\n¿Confirmas la acreditación '+(note.toLowerCase().includes('compens')?'por compensación':'manual')+' a '+c.email+(expiry?' con vencimiento '+expiry:' sin vencimiento')+'?'))return;
  el('credit').disabled=true;
  try{const {error}=await sb.rpc('ek_admin_credit_package',{p_owner:id,p_amount:amount,p_note:note,p_reference:reference,p_expires_at:expiresAt});if(error)throw error;msg('Recarga acreditada. Referencia: '+reference,'success');el('note').value='';el('paymentRef').value='';await load()}
  catch(err){msg('No se pudo acreditar: '+err.message,'error')}
