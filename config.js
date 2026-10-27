@@ -1,0 +1,1 @@
+window.TESTS={"caars": {"name": "CAARS", "subtitle": "Autoinforme de adultos · Referencia visual", "count": 66, "max": 3}, "hamilton": {"name": "Hamilton", "subtitle": "Valoración profesional · Referencia visual", "count": 14, "max": 4}, "cet-de": {"name": "CET-DE", "subtitle": "Cuestionario multidimensional · Referencia visual", "count": 63, "max": 4}};
