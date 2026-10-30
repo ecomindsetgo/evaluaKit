@@ -1,7 +1,6 @@
 const $=id=>document.getElementById(id);let me;
 async function init(){if(window.ekRecovering)return;$('adminLink').classList.add('hide');const {data:{session:active}}=await sb.auth.getSession();const {data,error}=active?await sb.auth.getUser():{data:{user:null},error:null};if(error)throw error;me=data.user;if(!me){$('loadingSession').classList.add('hide');$('auth').classList.remove('hide');$('workspace').classList.add('hide');$('logout').classList.add('hide');return} $('loadingSession').classList.add('hide');$('auth').classList.add('hide');$('workspace').classList.remove('hide');$('logout').classList.remove('hide');await checkAdminAccess();await Promise.allSettled([loadInbox(),loadBrand(),loadWallet()]).then(results=>{for(const r of results)if(r.status==='rejected')msg('No se pudieron cargar todos los datos: '+r.reason.message)});const redirect=new URLSearchParams(location.search).get('returnTo');if(redirect&&/^(informe\.html\?id=[0-9a-f-]+)$/i.test(redirect)){location.replace(redirect)}}
 $('login').onclick=async()=>{try{const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error)throw error;await init()}catch(e){$('authmsg').textContent=e.message}};
-$('register').onclick=async()=>{try{const {data,error}=await sb.auth.signUp({email:$('email').value.trim(),password:$('password').value,options:{emailRedirectTo:new URL('index.html',location.href).href}});if(error)throw error;$('authmsg').textContent=data.session?'Cuenta creada.':'Revisa tu correo para confirmar la cuenta.';await init()}catch(e){$('authmsg').textContent=e.message}};
 $('logout').onclick=async()=>{$('adminLink').classList.add('hide');await sb.auth.signOut();location.reload()};
 async function checkAdminAccess(){
  $('adminLink').classList.add('hide');
@@ -35,11 +34,12 @@ $('logo').addEventListener('change',()=>{const f=$('logo').files?.[0];if(!f)retu
 // El flujo de recuperación se inicia desde el enlace de Supabase.
 const recoveryParams = new URLSearchParams(location.hash.slice(1));
 const recoveryQuery = new URLSearchParams(location.search);
-window.ekRecovering = recoveryParams.get('type') === 'recovery' || recoveryQuery.get('type') === 'recovery' || recoveryQuery.has('token_hash') && recoveryQuery.get('type') === 'recovery';
-function showReset(){window.ekRecovering=true;$('loadingSession').classList.add('hide');$('workspace').classList.add('hide');$('auth').classList.remove('hide');$('newPasswordForm').classList.remove('hide');$('recoveryForm').classList.add('hide');$('forgotPassword').classList.add('hide');$('login').disabled=true;$('register').disabled=true;}
+window.ekInviting = window.EK_AUTH_FLOW_TYPE === 'invite' || recoveryParams.get('type') === 'invite' || recoveryQuery.get('type') === 'invite';
+window.ekRecovering = window.ekInviting || window.EK_AUTH_FLOW_TYPE === 'recovery' || recoveryParams.get('type') === 'recovery' || recoveryQuery.get('type') === 'recovery';
+function showReset(){window.ekRecovering=true;$('loadingSession').classList.add('hide');$('workspace').classList.add('hide');$('auth').classList.remove('hide');$('newPasswordForm').classList.remove('hide');$('recoveryForm').classList.add('hide');$('forgotPassword').classList.add('hide');$('login').disabled=true;if(window.ekInviting){const h=$('newPasswordForm').querySelector('h3');if(h)h.textContent='Establecer contraseña y activar acceso';}}
 async function startAuthFlow(){
  sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showReset()});
- if(window.ekRecovering){showReset();if(recoveryQuery.has('token_hash')){const result=await sb.auth.verifyOtp({token_hash:recoveryQuery.get('token_hash'),type:'recovery'});if(result.error){$('newPasswordMsg').textContent='El enlace ha caducado o no es válido: '+result.error.message;return}}const {data,error}=await sb.auth.getSession();if(error||!data.session){$('newPasswordMsg').textContent='El enlace no es válido o ha caducado. Solicita uno nuevo.';$('forgotPassword').classList.remove('hide');$('recoveryForm').classList.remove('hide');}return}
+ if(window.ekRecovering){showReset();if(recoveryQuery.has('token_hash')){const result=await sb.auth.verifyOtp({token_hash:recoveryQuery.get('token_hash'),type:window.ekInviting?'invite':'recovery'});if(result.error){$('newPasswordMsg').textContent='El enlace ha caducado o no es válido: '+result.error.message;return}}const {data,error}=await sb.auth.getSession();if(error||!data.session){$('newPasswordMsg').textContent=window.ekInviting?'La invitación ha caducado o no es válida. Solicita una nueva al administrador.':'El enlace no es válido o ha caducado. Solicita uno nuevo.';if(!window.ekInviting){$('forgotPassword').classList.remove('hide');$('recoveryForm').classList.remove('hide');}}return}
  await init();
 }
 $('forgotPassword').onclick=()=>{$('recoveryEmail').value=$('email').value.trim();$('recoveryForm').classList.remove('hide');$('recoveryEmail').focus()};
@@ -66,7 +66,7 @@ $('saveNewPassword').onclick=async()=>{
   $('newPasswordMsg').textContent='Contraseña actualizada. Ya puedes ingresar.';
   history.replaceState(null,'',location.pathname);
   window.ekRecovering=false;
-  $('newPasswordForm').classList.add('hide');$('forgotPassword').classList.remove('hide');$('login').disabled=false;$('register').disabled=false;
+  $('newPasswordForm').classList.add('hide');$('forgotPassword').classList.remove('hide');$('login').disabled=false;window.ekInviting=false;
   await sb.auth.signOut();
   await init();
   msg('Contraseña actualizada. Inicia sesión con tu nueva contraseña.','success');
